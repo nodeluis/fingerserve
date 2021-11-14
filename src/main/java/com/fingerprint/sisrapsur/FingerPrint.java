@@ -14,6 +14,7 @@ import com.digitalpersona.onetouch.readers.DPFPReadersCollection;
 import com.digitalpersona.onetouch.verification.DPFPVerification;
 import com.digitalpersona.onetouch.verification.DPFPVerificationResult;
 import org.glassfish.grizzly.compression.lzma.impl.Base;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.Base64;
@@ -89,7 +90,7 @@ public class FingerPrint extends Thread{
         }
     }
 
-    private void verify(String fingerprint){
+    private void verify2(String fingerprint){
         logger.info("verify ready");
         JSONObject response = getResponse("verify-response", "Fallo al verificar huella");
         //logger.info("huella "+ fingerprint);
@@ -107,11 +108,7 @@ public class FingerPrint extends Thread{
 
             DPFPFeatureExtraction featureExtractor = DPFPGlobal.getFeatureExtractionFactory().createFeatureExtraction();
 
-            logger.info(featureExtractor.toString());
-
             DPFPFeatureSet featureSet = featureExtractor.createFeatureSet(sample, DPFPDataPurpose.DATA_PURPOSE_VERIFICATION);
-
-            logger.info(featureSet.toString());
 
             DPFPVerification matcher = DPFPGlobal.getVerificationFactory().createVerification();
             matcher.setFARRequested(DPFPVerification.LOW_SECURITY_FAR);
@@ -125,6 +122,98 @@ public class FingerPrint extends Thread{
                 }
                 server.sendResponse(response);
                 return;
+            }
+        }catch(Exception e){
+            logger.info("Exception "+ e.toString());
+        }
+        server.sendResponse(response);
+    }
+
+    private void verify(String data){
+        JSONObject response = getResponse("verify-response", "Fallo al verificar huella");
+        JSONArray arr=new JSONArray(data);
+        /*String[] da=data.split(",");
+        for (int i = 0; i < da.length; i++) {
+            logger.info((new JSONObject(da[i]))+"");
+        }*/
+        response.put("success", false);
+        /*if(fingerprint.length()==0 || "".equals(activeReader)){
+            server.sendResponse(response);
+            return;
+        }*/
+        try{
+            DPFPSample sample = getSample(activeReader);
+            if(sample == null){
+                server.sendResponse(response);
+                return;
+            }
+
+            DPFPFeatureExtraction featureExtractor = DPFPGlobal.getFeatureExtractionFactory().createFeatureExtraction();
+            DPFPFeatureSet featureSet = featureExtractor.createFeatureSet(sample, DPFPDataPurpose.DATA_PURPOSE_VERIFICATION);
+            DPFPVerification matcher = DPFPGlobal.getVerificationFactory().createVerification();
+            matcher.setFARRequested(DPFPVerification.LOW_SECURITY_FAR);
+
+            boolean t=false;
+
+            JSONObject resp=new JSONObject();
+
+            for (int i = 0; i < arr.length()&&!t; i++) {
+                JSONObject ob=arr.getJSONObject(i);
+
+                DPFPTemplate template1 = getTemplate(ob.getString("pulgar"));
+                if(template1!=null){
+                    DPFPVerificationResult result = matcher.verify(featureSet, template1);
+                    if(result.isVerified()){
+                        t=true;
+                        resp=ob;
+                        break;
+                    }
+                }
+                DPFPTemplate template2 = getTemplate(ob.getString("indice"));
+                if(template2!=null){
+                    DPFPVerificationResult result = matcher.verify(featureSet, template2);
+                    if(result.isVerified()){
+                        t=true;
+                        resp=ob;
+                        break;
+                    }
+                }
+                DPFPTemplate template3 = getTemplate(ob.getString("medio"));
+                if(template3!=null){
+                    DPFPVerificationResult result = matcher.verify(featureSet, template3);
+                    if(result.isVerified()){
+                        t=true;
+                        resp=ob;
+                        break;
+                    }
+                }
+                DPFPTemplate template4 = getTemplate(ob.getString("anular"));
+                if(template4!=null){
+                    DPFPVerificationResult result = matcher.verify(featureSet, template4);
+                    if(result.isVerified()){
+                        t=true;
+                        resp=ob;
+                        break;
+                    }
+                }
+                DPFPTemplate template5 = getTemplate(ob.getString("menique"));
+                if(template5!=null){
+                    DPFPVerificationResult result = matcher.verify(featureSet, template5);
+                    if(result.isVerified()){
+                        t=true;
+                        resp=ob;
+                        break;
+                    }
+                }
+            }
+            if(t){
+                response = getResponse("verify-response", resp.getString("name"));
+                response.put("data",resp.toString());
+                response.put("success", t);
+            }else{
+                response = getResponse("verify-response", "Huella no encontrada");
+                response.put("data","");
+                response.put("success", t);
             }
         }catch(Exception e){
             logger.info("Exception "+ e.toString());

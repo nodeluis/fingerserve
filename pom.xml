@@ -49,16 +49,7 @@
       <artifactId>cors-filter</artifactId>
       <version>2.10</version>
     </dependency>
-    <dependency>
-      <groupId>com.finger.code</groupId>
-      <artifactId>dpotapi</artifactId>
-      <version>1.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.finger.code.jni</groupId>
-      <artifactId>dpotjni</artifactId>
-      <version>1.0</version>
-    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
