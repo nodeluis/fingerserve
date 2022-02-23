@@ -13,6 +13,8 @@ import com.digitalpersona.onetouch.processing.DPFPImageQualityException;
 import com.digitalpersona.onetouch.readers.DPFPReadersCollection;
 import com.digitalpersona.onetouch.verification.DPFPVerification;
 import com.digitalpersona.onetouch.verification.DPFPVerificationResult;
+import com.mongodb.client.*;
+import org.bson.Document;
 import org.glassfish.grizzly.compression.lzma.impl.Base;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,6 +28,9 @@ public class FingerPrint extends Thread{
     private String activeReader;
     private Logger logger = Logger.getLogger(this.getClass().getName());
     private FingerServerEndPoint server;
+    MongoClient mongoClient= MongoClients.create();
+    MongoDatabase db = mongoClient.getDatabase("tickeo");
+    MongoCollection<Document> collection = db.getCollection("users");
 
     public void run(){
         switch(server.getState()){
@@ -131,7 +136,6 @@ public class FingerPrint extends Thread{
 
     private void verify(String data){
         JSONObject response = getResponse("verify-response2", "Fallo al verificar huella");
-        JSONArray arr=new JSONArray(data);
         /*String[] da=data.split(",");
         for (int i = 0; i < da.length; i++) {
             logger.info((new JSONObject(da[i]))+"");
@@ -157,62 +161,69 @@ public class FingerPrint extends Thread{
 
             JSONObject resp=new JSONObject();
 
-            for (int i = 0; i < arr.length()&&!t; i++) {
-                JSONObject ob=arr.getJSONObject(i);
-
-                DPFPTemplate template1 = getTemplate(ob.getString("pulgar"));
+            MongoCursor<Document> cursor = collection.find().iterator();
+            // Prints out the document.
+            int idEmployee=-1;
+            while (cursor.hasNext()) {
+                JSONObject ob=new JSONObject(cursor.next().toJson());
+                DPFPTemplate template1 = getTemplate(ob.getString("thumb"));
                 if(template1!=null){
                     DPFPVerificationResult result = matcher.verify(featureSet, template1);
                     if(result.isVerified()){
                         t=true;
                         resp=ob;
+                        idEmployee=ob.getInt("idEmployee");
                         break;
                     }
                 }
-                DPFPTemplate template2 = getTemplate(ob.getString("indice"));
+                DPFPTemplate template2 = getTemplate(ob.getString("index"));
                 if(template2!=null){
                     DPFPVerificationResult result = matcher.verify(featureSet, template2);
                     if(result.isVerified()){
                         t=true;
                         resp=ob;
+                        idEmployee=ob.getInt("idEmployee");
                         break;
                     }
                 }
-                DPFPTemplate template3 = getTemplate(ob.getString("medio"));
+                DPFPTemplate template3 = getTemplate(ob.getString("middle"));
                 if(template3!=null){
                     DPFPVerificationResult result = matcher.verify(featureSet, template3);
                     if(result.isVerified()){
                         t=true;
                         resp=ob;
+                        idEmployee=ob.getInt("idEmployee");
                         break;
                     }
                 }
-                DPFPTemplate template4 = getTemplate(ob.getString("anular"));
+                DPFPTemplate template4 = getTemplate(ob.getString("ring"));
                 if(template4!=null){
                     DPFPVerificationResult result = matcher.verify(featureSet, template4);
                     if(result.isVerified()){
                         t=true;
                         resp=ob;
+                        idEmployee=ob.getInt("idEmployee");
                         break;
                     }
                 }
-                DPFPTemplate template5 = getTemplate(ob.getString("menique"));
+                DPFPTemplate template5 = getTemplate(ob.getString("finger"));
                 if(template5!=null){
                     DPFPVerificationResult result = matcher.verify(featureSet, template5);
                     if(result.isVerified()){
                         t=true;
                         resp=ob;
+                        idEmployee=ob.getInt("idEmployee");
                         break;
                     }
                 }
             }
             if(t){
                 response = getResponse("verify-response", resp.getString("name"));
-                response.put("data",resp.toString());
+                response.put("idEmployee",idEmployee);
                 response.put("success", t);
             }else{
                 response = getResponse("verify-response", "Huella no encontrada");
-                response.put("data","");
+                response.put("idEmployee",-1);
                 response.put("success", t);
             }
         }catch(Exception e){
